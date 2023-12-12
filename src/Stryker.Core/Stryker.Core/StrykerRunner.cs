@@ -1,6 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Stryker.Core.Exceptions;
@@ -68,6 +68,7 @@ namespace Stryker.Core
                 AnalyzeCoverage(options);
 
                 // Filter
+                var testProjects = _mutationTestProcesses.SelectMany(proj => proj.Input.TestProjectsInfo.TestProjects.Select(testProject => new FileInfo(testProject.AnalyzerResult.ProjectFilePath).DirectoryName)).Distinct();
                 foreach (var project in _mutationTestProcesses)
                 {
                     project.FilterMutants();

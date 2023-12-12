@@ -1,8 +1,8 @@
+using System.Collections.Generic;
+using System.Linq;
 using Stryker.Core.Mutants;
 using Stryker.Core.Options;
 using Stryker.Core.ProjectComponents;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Stryker.Core.MutantFilters
 {
@@ -19,7 +19,14 @@ namespace Stryker.Core.MutantFilters
         {
             var mutantsToTest = mutants.Where(m => m.ResultStatus is not MutantStatus.Ignored);
 
-            foreach (var mutantFilter in MutantFilters)
+            // Execute baseline filter first. This does not actually filter, but set only the previous result on the mutant
+            if (MutantFilters.Any(x => x.Type == MutantFilter.Baseline))
+            {
+                var mutantFilter = MutantFilters.FirstOrDefault(x => x.Type == MutantFilter.Baseline);
+                mutantsToTest = mutantFilter.FilterMutants(mutantsToTest, file, options);
+            }
+
+            foreach (var mutantFilter in MutantFilters.Where(filter => filter.Type != MutantFilter.Baseline))
             {
                 // These mutants should be tested according to current filter
                 var remainingMutantsToTest = mutantFilter.FilterMutants(mutantsToTest, file, options);

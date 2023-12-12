@@ -15,9 +15,8 @@ namespace Stryker.Core.DiffProviders
         private readonly StrykerOptions _options;
         private readonly IGitInfoProvider _gitInfoProvider;
 
-        public GitDiffProvider(StrykerOptions options, TestSet tests, IGitInfoProvider gitInfoProvider = null)
+        public GitDiffProvider(StrykerOptions options, IGitInfoProvider gitInfoProvider = null)
         {
-            Tests = tests;
             _options = options;
             _gitInfoProvider = gitInfoProvider ?? new GitInfoProvider(options);
         }
@@ -44,6 +43,18 @@ namespace Stryker.Core.DiffProviders
             {
                 testProjects.Add(_options.ProjectPath);
             }
+
+            //var testProjects = _options.TestProjects.ToList();
+            //switch (testProjects.Any())
+            //{
+            //    case false when !_options.IsSolutionContext:
+            //        // Works only in project mode. In solution mode this makes sure that all changed files are listed as changed test files.
+            //        testProjects.Add(_options.ProjectPath);
+            //        break;
+            //    case false when _options.IsSolutionContext:
+            //        testProjects.AddRange(_testProjectPaths);
+            //        break;
+            //}
 
             var testPaths = testProjects
                 .Select(testProject => testProject.EndsWith(Path.DirectorySeparatorChar)

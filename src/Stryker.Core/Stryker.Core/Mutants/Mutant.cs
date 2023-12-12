@@ -21,6 +21,30 @@ namespace Stryker.Core.Mutants
     /// </summary>
     public class Mutant : IReadOnlyMutant
     {
+        MutantStatus IReadOnlyMutant.ResultStatus
+        {
+            get
+            {
+                return ResultStatus == MutantStatus.Ignored
+                    ? ResultStatusBaseline == MutantStatus.Pending
+                        ? ResultStatus
+                        : ResultStatusBaseline
+                    : ResultStatus;
+            }
+        }
+        string IReadOnlyMutant.ResultStatusReason
+        {
+            get
+            {
+                return ResultStatus == MutantStatus.Ignored
+
+                    ? ResultStatusBaseline == MutantStatus.Pending
+                        ? ResultStatusReason
+                        : ResultStatusReasonBaseline
+                    : ResultStatusReason;
+            }
+        }
+
         public int Id { get; set; }
 
         public Mutation Mutation { get; set; }
@@ -35,7 +59,10 @@ namespace Stryker.Core.Mutants
 
         public string ResultStatusReason { get; set; }
 
-        public bool CountForStats => ResultStatus != MutantStatus.CompileError && ResultStatus != MutantStatus.Ignored;
+        public MutantStatus ResultStatusBaseline { get; set; }
+        public string ResultStatusReasonBaseline { get; set; }
+
+        public bool CountForStats => ResultStatus != MutantStatus.CompileError && (ResultStatus != MutantStatus.Ignored || ResultStatusBaseline != MutantStatus.Ignored);
 
         public bool IsStaticValue { get; set; }
 

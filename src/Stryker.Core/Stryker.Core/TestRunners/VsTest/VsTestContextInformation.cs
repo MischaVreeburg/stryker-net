@@ -115,7 +115,7 @@ namespace Stryker.Core.TestRunners.VsTest
             }
             return vsTestConsole;
         }
-        
+
         /// <summary>
         ///     Builds a new process launcher used for a test session.
         /// </summary>
@@ -184,7 +184,7 @@ namespace Stryker.Core.TestRunners.VsTest
 
             return TestsPerSource[source].Count > 0;
         }
-        
+
         private void DiscoverTestsInSources(string newSource)
         {
             var wrapper = BuildVsTestWrapper("TestDiscoverer");
@@ -250,6 +250,7 @@ namespace Stryker.Core.TestRunners.VsTest
 
             return $@"<RunSettings>
  <RunConfiguration>
+  <CollectSourceInformation>True</CollectSourceInformation>
   <MaxCpuCount>{Math.Max(1, Options.Concurrency)}</MaxCpuCount>
   <DesignMode>true</DesignMode>
 {testCaseFilter}

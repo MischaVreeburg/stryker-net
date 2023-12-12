@@ -48,7 +48,7 @@ namespace Stryker.Core.MutationTest
         /// This constructor is used by the <see cref="MutationTestProcess"/> initialization logic.
         /// </summary>
         /// <param name="options"></param>
-        public CsharpMutationProcess(StrykerOptions options) : this( null, options)
+        public CsharpMutationProcess(StrykerOptions options) : this(null, options)
         { }
 
         public void Mutate(MutationTestInput input)
@@ -79,7 +79,7 @@ namespace Stryker.Core.MutationTest
         private void CompileMutations(MutationTestInput input)
         {
             var info = input.SourceProjectInfo;
-            var projectInfo =  (ProjectComponent<SyntaxTree>) info.ProjectContents;
+            var projectInfo = (ProjectComponent<SyntaxTree>)info.ProjectContents;
             using var ms = new MemoryStream();
             using var msForSymbols = _options.DevMode ? new MemoryStream() : null;
             // compile the mutated syntax trees
@@ -130,6 +130,7 @@ namespace Stryker.Core.MutationTest
 
         public void FilterMutants(MutationTestInput input)
         {
+            _logger.LogInformation("Evaluating mutations for {0}", input.SourceProjectInfo.ProjectContents.RelativePath);
             var mutantFilter = _mutantFilter ?? MutantFilterFactory.Create(_options, input);
             foreach (var file in input.SourceProjectInfo.ProjectContents.GetAllFiles())
             {

@@ -1,4 +1,6 @@
 
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Stryker.Core.DiffProviders;
@@ -6,8 +8,6 @@ using Stryker.Core.Logging;
 using Stryker.Core.Mutants;
 using Stryker.Core.Options;
 using Stryker.Core.ProjectComponents;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Stryker.Core.MutantFilters
 {
@@ -20,36 +20,17 @@ namespace Stryker.Core.MutantFilters
         public MutantFilter Type => MutantFilter.Since;
         public string DisplayName => "since filter";
 
-        public SinceMutantFilter(IDiffProvider diffProvider = null)
+        public SinceMutantFilter(DiffResult diffResult, TestSet tests)
         {
             _logger = ApplicationLogging.LoggerFactory.CreateLogger<SinceMutantFilter>();
 
-            _diffResult = diffProvider.ScanDiff();
-            _tests = diffProvider.Tests;
-
-            if (_diffResult != null)
-            {
-                _logger.LogInformation("{0} files changed", (_diffResult.ChangedSourceFiles?.Count ?? 0) + (_diffResult.ChangedTestFiles?.Count ?? 0));
-
-                if (_diffResult.ChangedSourceFiles != null)
-                {
-                    foreach (var changedFile in _diffResult.ChangedSourceFiles)
-                    {
-                        _logger.LogInformation("Changed file {0}", changedFile);
-                    }
-                }
-                if (_diffResult.ChangedTestFiles != null)
-                {
-                    foreach (var changedFile in _diffResult.ChangedTestFiles)
-                    {
-                        _logger.LogInformation("Changed test file {0}", changedFile);
-                    }
-                }
-            }
+            _diffResult = diffResult;
+            _tests = tests;
         }
 
         public IEnumerable<Mutant> FilterMutants(IEnumerable<Mutant> mutants, IReadOnlyFileLeaf file, StrykerOptions options)
         {
+            // ToDo decide to return method if mutants count == 0;
             // Mutants can be enabled for testing based on multiple reasons. We store all the filtered mutants in this list and return this list.
             IEnumerable<Mutant> filteredMutants;
 
@@ -120,10 +101,12 @@ namespace Stryker.Core.MutantFilters
 
             foreach (var mutant in mutants)
             {
+                if (mutant.CoveringTests.IsEmpty || mutant.CoveringTests.Count == 0)
+                    continue;
                 var coveringTests = _tests.Extract(mutant.CoveringTests.GetGuids());
 
                 if (coveringTests != null
-                    && coveringTests.Any(coveringTest => _diffResult.ChangedTestFiles.Any(changedTestFile => coveringTest.TestFilePath == changedTestFile)))
+                    && coveringTests.Any(coveringTest => _diffResult.ChangedTestFiles.Any(changedTestFile => coveringTest.TestFilePath == changedTestFile || coveringTest.TestFilePath is null)))
                 {
                     mutant.ResultStatus = MutantStatus.Pending;
                     mutant.ResultStatusReason = "One or more covering tests changed";

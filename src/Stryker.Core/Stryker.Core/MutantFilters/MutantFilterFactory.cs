@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Stryker.Core.Baseline.Providers;
 using Stryker.Core.DiffProviders;
+using Stryker.Core.Logging;
+using Stryker.Core.Mutants;
 using Stryker.Core.MutationTest;
 using Stryker.Core.Options;
 
@@ -14,6 +17,14 @@ namespace Stryker.Core.MutantFilters
         private static IGitInfoProvider _gitInfoProvider;
         private static IBaselineProvider _baselineProvider;
         private static MutationTestInput _input;
+        private static readonly ILogger _logger;
+        private static DiffResult _diffResult;
+        private static TestSet _tests;
+
+        static MutantFilterFactory()
+        {
+            _logger = ApplicationLogging.LoggerFactory.CreateLogger(nameof(MutantFilterFactory));
+        }
 
         public static IMutantFilter Create(StrykerOptions options, MutationTestInput mutationTestInput,
             IDiffProvider diffProvider = null, IBaselineProvider baselineProvider = null,
@@ -25,7 +36,7 @@ namespace Stryker.Core.MutantFilters
             }
 
             _input = mutationTestInput;
-            _diffProvider = diffProvider ;
+            _diffProvider = diffProvider;
             _baselineProvider = baselineProvider;
             _gitInfoProvider = gitInfoProvider;
 
@@ -44,12 +55,14 @@ namespace Stryker.Core.MutantFilters
 
             if (options.WithBaseline)
             {
-                enabledFilters.Add(new BaselineMutantFilter(options,
-                    _baselineProvider ?? BaselineProviderFactory.Create(options), _gitInfoProvider ?? new GitInfoProvider(options)));
+                enabledFilters.Add(new BaselineMutantFilter(options, _input,
+                    _baselineProvider ??= BaselineProviderFactory.Create(options), _gitInfoProvider ??= new GitInfoProvider(options)));
             }
             if (options.Since || options.WithBaseline)
             {
-                enabledFilters.Add(new SinceMutantFilter(_diffProvider ?? new GitDiffProvider(options, _input.TestRunner.GetTests(_input.SourceProjectInfo))));
+                ScanDiff(options);
+
+                enabledFilters.Add(new SinceMutantFilter(_diffResult, _tests));
             }
             if (options.ExcludedLinqExpressions.Any())
             {
@@ -59,9 +72,53 @@ namespace Stryker.Core.MutantFilters
             return enabledFilters;
         }
 
+        private static void ScanDiff(StrykerOptions options)
+        {
+            if (_diffResult is null)
+            {
+                _tests = _input.TestRunner.GetTests(_input.SourceProjectInfo);
+                _diffProvider = new GitDiffProvider(options, _gitInfoProvider);
+
+                //if (options.IsSolutionContext)
+                //{
+                //    _diffProvider =
+                //        new GitDiffProvider(options, _input.TestProjectsInfo.GetTestSet(), _gitInfoProvider, _input.TestProjectsInfo.TestProjects.Select(testProject => new FileInfo(testProject.AnalyzerResult.ProjectFilePath).DirectoryName));
+                //}
+                //else
+                //{
+                //    _diffProvider =
+                //        new GitDiffProvider(options, _input.TestRunner.GetTests(_input.SourceProjectInfo), _gitInfoProvider);
+                //}
+
+                _diffResult = _diffProvider.ScanDiff();
+
+                if (_diffResult != null)
+                {
+                    _logger.LogInformation("{0} files changed",
+                        (_diffResult.ChangedSourceFiles?.Count ?? 0) + (_diffResult.ChangedTestFiles?.Count ?? 0));
+
+                    if (_diffResult.ChangedSourceFiles != null)
+                    {
+                        foreach (var changedFile in _diffResult.ChangedSourceFiles)
+                        {
+                            _logger.LogInformation("Changed file {0}", changedFile);
+                        }
+                    }
+
+                    if (_diffResult.ChangedTestFiles != null)
+                    {
+                        foreach (var changedFile in _diffResult.ChangedTestFiles)
+                        {
+                            _logger.LogInformation("Changed test file {0}", changedFile);
+                        }
+                    }
+                }
+            }
+        }
+
         private sealed class ByMutantFilterType : IComparer<IMutantFilter>
         {
-            public int Compare(IMutantFilter x, IMutantFilter y) => x?.Type.CompareTo(y?.Type) ?? -1; 
+            public int Compare(IMutantFilter x, IMutantFilter y) => x?.Type.CompareTo(y?.Type) ?? -1;
         }
     }
 }
